@@ -2,12 +2,19 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
-from app.schemas.order import CreateOrder
+from app.schemas.order import CreateOrder, ResponseOrder
 from app.models.user import User
 from app.models.product import Product
 from app.models.order_item import OrderItem
 from app.models.order import Order
 from app.api.endpoints.user import functions as user_functions
+from app.core.publisher import Publisher
+
+def publish_order(order: Order):
+    response_order = ResponseOrder.model_validate(order)
+    publisher = Publisher()
+    publisher.publish_created_order(response_order.model_dump_json())
+    publisher.close()
 
 def create_order(
     data: CreateOrder, 
@@ -37,4 +44,5 @@ def create_order(
     db.add(order)
     db.commit()
     db.refresh(order)
+    publish_order(order)
     return order

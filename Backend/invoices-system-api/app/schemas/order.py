@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from annotated_types import Len
 from typing import Annotated
 from uuid import UUID
@@ -14,6 +14,7 @@ class CreateOrder(BaseOrder):
     order_items: Annotated[list[CreateOrderItem], Len(min_length=1)]
 
 class ResponseOrder(BaseOrder):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     user_id: UUID
     order_items: list[CreateOrderItem]
