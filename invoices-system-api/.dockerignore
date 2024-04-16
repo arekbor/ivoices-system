@@ -1,0 +1,7 @@
+**/__pycache__
+**/*.pyc
+.dockerignore
+.env
+Dockerfile
+migration.bash
+run-dev.bash

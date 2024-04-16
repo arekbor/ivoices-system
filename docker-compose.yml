@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  invoices-system-api:
+    container_name: invoices-system-api
+    restart: always
+    build:
+      context: ${INVOICES_SYSTEM_API_PATH_DOCKERFILE}
+      dockerfile: Dockerfile
+    ports:
+      - 127.0.0.1:8000:8000
+    depends_on:
+      - invoices-system-api-database
+    environment:
+      - TZ=Europe/Warsaw
+      - DB_HOST=invoices-system-api-database
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      - JWT_SECRET_KEY=${INVOICES_SYSTEM_API_JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${INVOICES_SYSTEM_API_JWT_ALGORITHM}
+
+      - RABBITMQ_HOST=invoices-system-rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+      - RABBITMQ_ORDER_EXCHANGE_NAME=${RABBITMQ_ORDER_EXCHANGE_NAME}
+      - RABBITMQ_ORDER_EXCHANGE_TYPE=${RABBITMQ_ORDER_EXCHANGE_TYPE}
+      - RABBITMQ_ORDER_CREATED_QUEUE_NAME=${RABBITMQ_ORDER_CREATED_QUEUE_NAME}
+      - RABBITMQ_ORDER_CREATED_QUEUE_ROUTING_KEY=${RABBITMQ_ORDER_CREATED_QUEUE_ROUTING_KEY}
+
+  invoices-system-pdf:
+    container_name: invoices-system-pdf
+    restart: always
+    build:
+      context: ${INVOICES_SYSTEM_PDF_PATH_DOCKERFILE}
+      dockerfile: Dockerfile
+    depends_on:
+      - invoices-system-rabbitmq
+    volumes:
+      - /home/arek/Documents/invoices:/var/invoices
+    environment:
+      - TZ=Europe/Warsaw
+      - RABBITMQ_HOST=invoices-system-rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+      - RABBITMQ_ORDER_EXCHANGE_NAME=${RABBITMQ_ORDER_EXCHANGE_NAME}
+      - RABBITMQ_ORDER_EXCHANGE_TYPE=${RABBITMQ_ORDER_EXCHANGE_TYPE}
+      - RABBITMQ_ORDER_CREATED_QUEUE_NAME=${RABBITMQ_ORDER_CREATED_QUEUE_NAME}
+      - RABBITMQ_ORDER_CREATED_QUEUE_ROUTING_KEY=${RABBITMQ_ORDER_CREATED_QUEUE_ROUTING_KEY}
+
+      - RAPORT_DIR_LOCATION=/var/invoices
+
+  invoices-system-api-database:
+    image: postgres
+    container_name: invoices-system-api-database
+    restart: always
+    volumes:
+      - invoices-system-api-database-volume:/var/lib/postgresql/data
+    environment:
+      TZ: UTC
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+  invoices-system-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: invoices-system-rabbitmq
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - invoices-system-rabbitmq-volume:/var/lib/rabbitmq/
+      - invoices-system-rabbitmq-volume:/var/log/rabbitmq
+
+volumes:
+  invoices-system-api-database-volume:
+    driver: local
+  invoices-system-rabbitmq-volume:
+    driver: local

@@ -1,0 +1,8 @@
+fastapi[all]
+pydantic
+sqlalchemy
+psycopg2
+python-dateutil
+bcrypt
+PyJWT
+pika

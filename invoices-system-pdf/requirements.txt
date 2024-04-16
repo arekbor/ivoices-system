@@ -1,1 +1,4 @@
-#TODO install  sudo apt-get install wkhtmltopdf  wkhtmltopdf
+pika
+pydantic-settings
+jinja2
+pdfkit
