@@ -1,14 +1,14 @@
-from typing import Annotated
+import time
 from sqlalchemy.orm import Session
+from app.core.bearer import JwtBearer
 from app.models.user import User
-from app.schemas.user import CreateUser, Token
-from fastapi.security import OAuth2PasswordRequestForm
+from app.schemas.user import CreateUser, LoginUser, Token
 import bcrypt
 from datetime import timedelta, datetime, timezone
 import jwt
 from app.core.settings import get_settings
 from fastapi import Depends, HTTPException, status
-from app.core.dependencies import oauth2_scheme, get_db
+from app.core.dependencies import get_db
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,11 +31,11 @@ def register_user(data: CreateUser, db: Session = Depends(get_db)):
     return new_user
 
 def login_user(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    data: LoginUser,
     db: Session = Depends(get_db)
 ):
-    db_user = get_user_by_username(db, form_data.username)
-    if not db_user or not verify_password(form_data.password, db_user.password):
+    db_user = get_user_by_username(db, data.username)
+    if not db_user or not verify_password(data.password, db_user.password):
         raise credentials_exception
 
     access_token = get_access_token(
@@ -43,18 +43,22 @@ def login_user(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(JwtBearer()), db: Session = Depends(get_db)):
+    payload = decode_jwt(token)
+    sub = payload.get("sub")
+    if sub is None:
+        raise credentials_exception
+    db_user = db.query(User).filter(User.id == sub).first()
+    if db_user is None:
+        raise credentials_exception
+    return db_user
+    
+def decode_jwt(token: str):
     try:
         payload = jwt.decode(token, get_settings().JWT_SECRET_KEY, algorithms=[get_settings().JWT_ALGORITHM])
-        sub = payload.get("sub")
-        if sub is None:
-            raise credentials_exception
-        db_user = db.query(User).filter(User.id == sub).first()
-        if db_user is None:
-            raise credentials_exception
-        return db_user
+        return payload if payload["exp"] >= time.time() else None
     except:
-        raise credentials_exception
+        return None
     
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
